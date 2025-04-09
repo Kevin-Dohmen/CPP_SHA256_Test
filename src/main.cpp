@@ -64,14 +64,14 @@ int main(){
     }
 
     std::cout << std::endl;
-    
-    auto eDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(eet - est);
-    auto dDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(det - dst);
+
+    auto eDuration = std::chrono::duration_cast<std::chrono::duration<double>>(eet - est);
+    auto dDuration = std::chrono::duration_cast<std::chrono::duration<double>>(det - dst);
 
     std::cout << "Encode cycles: " << ee - es << std::endl;
     std::cout << "Decode cycles: " << de - ds << std::endl;
-    std::cout << "Encode time: " << eDurationMs.count() << " ms" << std::endl;
-    std::cout << "Decode time: " << dDurationMs.count() << " ms" << std::endl;
+    std::cout << "Encode time: " << eDuration.count() * 1000 << " ms" << std::endl;
+    std::cout << "Decode time: " << dDuration.count() * 1000 << " ms" << std::endl;
 
     if (!std::filesystem::exists("./tmp")) {
         std::filesystem::create_directory("./tmp");

@@ -12,19 +12,13 @@ char Base64::ByteToChar(unsigned char b){
     return '=';
 }
 
-unsigned char Base64::CharToByte(char c) { // make lookup table?
-    if (c >= 'A' && c <= 'Z') {
-        return (unsigned char)(c - 'A');
-    } else if (c >= 'a' && c <= 'z') {
-        return (unsigned char)(c - 'a' + 26);
-    } else if (c >= '0' && c <= '9') {
-        return (unsigned char)(c - '0' + 52);
-    } else if (c == '+') {
-        return 62u;
-    } else if (c == '/') {
-        return 63u;
-    }
-    return 0xFFu;
+unsigned char Base64::CharToByte(char c) {
+    if (c >= 'A' && c <= 'Z') return c - 'A';           // A-Z -> 0-25
+    if (c >= 'a' && c <= 'z') return c - 'a' + 26;      // a-z -> 26-51
+    if (c >= '0' && c <= '9') return c - '0' + 52;      // 0-9 -> 52-61
+    if (c == '+') return 62;                            // '+' -> 62
+    if (c == '/') return 63;                            // '/' -> 63
+    return 0xFF;                                        // Invalid character
 }
 
 char* Base64::Encode(const unsigned char* data, size_t input_length, size_t* output_length){

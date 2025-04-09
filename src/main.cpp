@@ -4,6 +4,8 @@
 #include <ctime>
 #include <cstdlib> // for rand() and srand()
 #include <chrono> // for std::chrono::high_resolution_clock
+#include <fstream> // for file operations
+#include <filesystem>
 
 #include "base64.h"
 #include "binOps.h"
@@ -69,6 +71,20 @@ int main(){
     std::cout << "Decode cycles: " << de - ds << std::endl;
     std::cout << "Encode time: " << eDuration.count() / 1000 << " ms" << std::endl;
     std::cout << "Decode time: " << dDuration.count() / 1000 << " ms" << std::endl;
+
+    if (!std::filesystem::exists("./tmp")) {
+        std::filesystem::create_directory("./tmp");
+    }
+
+    std::ofstream outFile("./tmp/the_great_random_b64.txt", std::ios::binary);
+
+    if (outFile.is_open()) {
+        outFile.write(whee, *outputLen);
+        outFile.close();
+        std::cout << "Encoded data written to the_great_random_b64.txt" << std::endl;
+    } else {
+        std::cerr << "Error opening file for writing." << std::endl;
+    }
 
     // cleanup
     delete[] whee;

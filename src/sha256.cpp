@@ -18,27 +18,26 @@ static const uint32_t sha256_h[8] = {
 std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
 
     size_t dataLen = data.size();
-    if (dataLen == 0) return std::vector<uint8_t>(32, 0); // empty input
-
     size_t srcBitsLen = dataLen * 8;
 
-    // check for overflow
+    // Check for overflow
     if (srcBitsLen / 8 != dataLen) return std::vector<uint8_t>(32, 0); // overflow
     if (srcBitsLen > 0xFFFFFFFFFFFFFFFF) return std::vector<uint8_t>(32, 0); // overflow
 
-    // add padding
+    // Add padding
     size_t paddingLen = (512 - ((srcBitsLen + 1 + 64) % 512)) % 512;
     size_t newLen = dataLen + 1 + paddingLen / 8 + 8;
     std::vector<uint8_t> paddedData(newLen, 0);
-    for (size_t i = 0; i < dataLen; i++){
+
+    // Copy original data
+    for (size_t i = 0; i < dataLen; i++) {
         paddedData[i] = data[i];
     }
-    paddedData[dataLen] = 0x80; // append 1 bit (0x80 == 10000000)
-    for (size_t i = dataLen + 1; i < newLen - 8; i++){
-        paddedData[i] = 0x00; // append 0 bits
-    }
 
-    // append length in bits
+    // Append the '1' bit (0x80)
+    paddedData[dataLen] = 0x80;
+
+    // Append length in bits
     for (size_t i = 0; i < 8; i++){
         paddedData[newLen - 1 - i] = (srcBitsLen >> (i * 8)) & 0xFF;
     }
@@ -50,15 +49,9 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
     for (size_t i = 0; i < dataLenWords; i++){
         preprocData[i] = 0;
         for (size_t j = 0; j < 4; j++){
-            preprocData[i] |= (paddedData[i * 4 + j] << ((3 - j) * 8));
+            preprocData[i] |= (static_cast<uint32_t>(paddedData[i * 4 + j]) << ((3 - j) * 8));
         }
     }
-    // for (size_t i = 0; i < dataLenWords; i++) {
-    //     preprocData[i] = (paddedData[i * 4] << 24) |
-    //                      (paddedData[i * 4 + 1] << 16) |
-    //                      (paddedData[i * 4 + 2] << 8) |
-    //                      (paddedData[i * 4 + 3]);
-    // }
 
     uint32_t w[64];
 
@@ -74,8 +67,8 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
 
         // extend
         for (int i = 16; i < 64; i++){
-            uint32_t s0 = BinOps::rotr(w[i - 15],  7) ^ BinOps::rotr(w[i - 15], 18) ^ BinOps::rotr(w[i - 15],  3);
-            uint32_t s1 = BinOps::rotr(w[i -  2], 17) ^ BinOps::rotr(w[i -  2], 19) ^ BinOps::rotr(w[i -  2], 10);
+            uint32_t s0 = BinOps::rotr(w[i - 15],  7) ^ BinOps::rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
+            uint32_t s1 = BinOps::rotr(w[i -  2], 17) ^ BinOps::rotr(w[i -  2], 19) ^ (w[i -  2] >> 10);
             w[i] = w[i - 16] + s0 + w[i - 7] + s1;
         }
 

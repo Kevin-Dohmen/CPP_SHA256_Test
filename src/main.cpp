@@ -18,13 +18,12 @@ int main(){
     Timer sha256Timer;
     Timer base64Timer;
 
-    std::string input = " ";
+    std::string input = "";
     std::vector<uint8_t> data(input.begin(), input.end());
 
     sha256Timer.start();
     std::vector<uint8_t> hash = SHA256::hash(data);
     sha256Timer.stop();
-    
 
     size_t* outputLength = new size_t(0);
 

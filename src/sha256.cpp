@@ -15,19 +15,17 @@ static const uint32_t sha256_h[8] = {
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
 };
 
-std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
-
-    size_t dataLen = data.size();
+uint8_t* SHA256::hash(uint8_t* data, size_t dataLen, size_t* outLen){
     size_t srcBitsLen = dataLen * 8;
 
     // Check for overflow
-    if (srcBitsLen / 8 != dataLen) return std::vector<uint8_t>(32, 0); // overflow
-    if (srcBitsLen > 0xFFFFFFFFFFFFFFFF) return std::vector<uint8_t>(32, 0); // overflow
+    if (srcBitsLen / 8 != dataLen) return nullptr;
+    if (srcBitsLen > 0xFFFFFFFFFFFFFFFF) return nullptr;
 
     // Add padding
     size_t paddingLen = (512 - ((srcBitsLen + 1 + 64) % 512)) % 512;
     size_t newLen = dataLen + 1 + paddingLen / 8 + 8;
-    std::vector<uint8_t> paddedData(newLen, 0);
+    uint8_t* paddedData = new uint8_t[newLen];
 
     // Copy original data
     for (size_t i = 0; i < dataLen; i++) {
@@ -37,6 +35,10 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
     // Append the '1' bit (0x80)
     paddedData[dataLen] = 0x80;
 
+    // Fill zero's
+    for (size_t i = dataLen + 1; i < newLen - 8; i++)
+        paddedData[i] = 0;
+
     // Append length in bits
     for (size_t i = 0; i < 8; i++){
         paddedData[newLen - 1 - i] = (srcBitsLen >> (i * 8)) & 0xFF;
@@ -45,7 +47,7 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
     // turn padded bytes into 32-bit words
     size_t dataLenWords = newLen / 4;
     // size_t dataLenBytes = newLen / 4 * 4;
-    std::vector<uint32_t> preprocData(dataLenWords, 0);
+    uint32_t* preprocData = new uint32_t[dataLenWords];
     for (size_t i = 0; i < dataLenWords; i++){
         preprocData[i] = 0;
         for (size_t j = 0; j < 4; j++){
@@ -53,13 +55,12 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
         }
     }
 
+    // init words and hash arrays
     uint32_t w[64];
-
     uint32_t hash[8];
     for (int i = 0; i < 8; i++) hash[i] = sha256_h[i];
     
     for (size_t cpos = 0; cpos < dataLenWords; cpos += 16){
-
         // copy
         for (size_t i = 0; i < 16; i++){ // last 48 words don't matter
             w[i] = preprocData[i + cpos];
@@ -67,7 +68,7 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
 
         // extend
         for (int i = 16; i < 64; i++){
-            uint32_t s0 = BinOps::rotr(w[i - 15],  7) ^ BinOps::rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
+            uint32_t s0 = BinOps::rotr(w[i - 15],  7) ^ BinOps::rotr(w[i - 15], 18) ^ (w[i - 15] >>  3);
             uint32_t s1 = BinOps::rotr(w[i -  2], 17) ^ BinOps::rotr(w[i -  2], 19) ^ (w[i -  2] >> 10);
             w[i] = w[i - 16] + s0 + w[i - 7] + s1;
         }
@@ -110,7 +111,7 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
         hash[7] += h;
     }
 
-    std::vector<uint8_t> digest(32, 0);
+    uint8_t* digest = new uint8_t[32];
     for (int i = 0; i < 8; i++){
         for (int j = 0; j < 4; j++){
             digest[i * 4 + j] = (hash[i] >> ((3 - j) * 8)) & 0xFF;
@@ -118,11 +119,14 @@ std::vector<uint8_t> SHA256::hash(const std::vector<uint8_t> data){
     }
 
     // clean up (clear for security)
-    std::fill(paddedData.begin(), paddedData.end(), 0);
-    std::fill(preprocData.begin(), preprocData.end(), 0);
+    for (size_t i = 0; i < newLen; i++) paddedData[i] = 0;
+    for (size_t i = 0; i < dataLenWords; i++) preprocData[i] = 0;
+    delete[] paddedData;
+    delete[] preprocData;
     for (int i = 0; i < 8; i++) hash[i] = 0;
     for (int i = 0; i < 64; i++) w[i] = 0;
 
+    *outLen = 32;
     return digest;
 }
 

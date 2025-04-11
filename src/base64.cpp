@@ -25,72 +25,91 @@ static const unsigned char c2b_lt[256] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF  // F- | 240 - 255
 };
 
-char Base64::ByteToChar(unsigned char b){
+inline char Base64::ByteToChar(unsigned char b){
     return b < 64 ? b2c_lt[b] : '=';
 }
 
-unsigned char Base64::CharToByte(char c) {
+inline uint8_t Base64::CharToByte(char c) {
     return c2b_lt[static_cast<unsigned char>(c)];
 }
 
-char* Base64::Encode(const unsigned char* data, size_t input_length, size_t* output_length){
+char* Base64::Encode(const uint8_t* data, size_t dataLen, size_t* outLen){
+    size_t input_length = dataLen;
     size_t encodedLen = 4 * ((input_length + 2) / 3);
-    char* encoded = new char[encodedLen + 1];
+
+    char* encoded = new char[encodedLen + 1]; // +1 for null terminator
+    encoded[encodedLen - 1] = '=';
+    encoded[encodedLen - 2] = '=';
+
 
     size_t dataIndex = 0;
     size_t encodedIndex = 0;
 
-    unsigned int buffer = 0;
-    int bitsInBuffer = 0;
+    while (dataIndex + 3 <= input_length) {
+        uint32_t buffer = (data[dataIndex]     << 16) |
+                          (data[dataIndex + 1] <<  8) |
+                          (data[dataIndex + 2]);
 
-    while (dataIndex < input_length){
-        buffer = (buffer << 8) | data[dataIndex++];
-        bitsInBuffer += 8;
+        encoded[encodedIndex++] = ByteToChar((buffer >> 18) & 0x3F);
+        encoded[encodedIndex++] = ByteToChar((buffer >> 12) & 0x3F);
+        encoded[encodedIndex++] = ByteToChar((buffer >>  6) & 0x3F);
+        encoded[encodedIndex++] = ByteToChar(buffer         & 0x3F);
 
-        while (bitsInBuffer >= 6){
-            encoded[encodedIndex++] = ByteToChar((buffer >> (bitsInBuffer - 6)) & 0x3F);
-            bitsInBuffer -= 6;
+        dataIndex += 3;
+    }
+
+    if (dataIndex < input_length) {
+        uint32_t buffer = data[dataIndex] << 16;
+        if (dataIndex + 1 < input_length) {
+            buffer |= data[dataIndex + 1] << 8;
+        }
+
+        encoded[encodedIndex++] = ByteToChar((buffer >> 18) & 0x3F);
+        encoded[encodedIndex++] = ByteToChar((buffer >> 12) & 0x3F);
+        if (dataIndex + 1 < input_length) {
+            encoded[encodedIndex++] = ByteToChar((buffer >> 6) & 0x3F);
         }
     }
 
-    if (bitsInBuffer > 0) {
-        buffer <<= (6 - bitsInBuffer);
-        encoded[encodedIndex++] = ByteToChar(buffer & 0x3F);
-    }
+    encoded[encodedLen] = '\0'; // ensure null termination
 
-    while (encodedIndex < encodedLen) {
-        encoded[encodedIndex++] = '=';
-    }
-
-    encoded[encodedIndex] = '\0';
-
-    *output_length = encodedLen;
+    *outLen = encodedLen;
     return encoded;
 }
 
-unsigned char* Base64::Decode(const char* data, size_t input_length, size_t* output_length){
+uint8_t* Base64::Decode(const char* data, size_t input_length, size_t* output_length) {
+    if (input_length % 4 != 0) {
+        *output_length = 0;
+        return nullptr; // Invalid input length for Base64
+    }
+
     size_t padding = 0;
     if (input_length >= 2) {
         if (data[input_length - 1] == '=') padding++;
         if (data[input_length - 2] == '=') padding++;
     }
+
     size_t decodedLen = (input_length / 4) * 3 - padding;
-    unsigned char* decoded = new unsigned char[decodedLen];
+    uint8_t* decoded = new uint8_t[decodedLen];
 
     size_t dataIndex = 0;
     size_t decodedIndex = 0;
-    
-    unsigned int buffer = 0;
-    int bitsInBuffer = 0;
 
-    while (dataIndex < input_length){
-        buffer = (buffer << 6) | (CharToByte(data[dataIndex++]) & 0x3F);
-        bitsInBuffer += 6;
+    while (dataIndex < input_length) {
+        uint32_t buffer = (CharToByte(data[dataIndex])     << 18) |
+                          (CharToByte(data[dataIndex + 1]) << 12) |
+                          (CharToByte(data[dataIndex + 2]) << 6)  |
+                          (CharToByte(data[dataIndex + 3]));
 
-        if (bitsInBuffer >= 8){
-            decoded[decodedIndex++] = (buffer >> (bitsInBuffer - 8)) & 0xFF;
-            bitsInBuffer -= 8;
+        decoded[decodedIndex++] = (buffer >> 16) & 0xFF;
+        if (data[dataIndex + 2] != '=') {
+            decoded[decodedIndex++] = (buffer >> 8) & 0xFF;
         }
+        if (data[dataIndex + 3] != '=') {
+            decoded[decodedIndex++] = buffer & 0xFF;
+        }
+
+        dataIndex += 4;
     }
 
     *output_length = decodedLen;

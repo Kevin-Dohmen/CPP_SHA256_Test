@@ -10,7 +10,7 @@ class SHA256 {
 public:
     SHA256() = delete;
 
-    static std::vector<uint8_t> hash(const std::vector<uint8_t> data);
+    static uint8_t* hash(uint8_t* data, size_t dataLen, size_t* outLen);
 };
 
 #endif

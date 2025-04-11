@@ -1,41 +1,30 @@
 #include <iostream>
+#include <vector>
+#include <string>
 #include <cstddef> // for size_t
-#include <bitset>
-#include <ctime>
-#include <cstdlib> // for rand() and srand()
-#include <chrono> // for std::chrono::high_resolution_clock
-#include <fstream> // for file operations
-#include <filesystem>
 
 #include "sha256.h"
 #include "base64.h"
-#include "binOps.h"
-#include "cycleCounter.h"
 #include "timer.h"
 
 int main(){
-
     Timer sha256Timer;
     Timer base64Timer;
 
-    std::string input = "";
+    std::string input;
+    std::cout << "Enter input: ";
+    std::getline(std::cin, input);
     std::vector<uint8_t> data(input.begin(), input.end());
 
+    size_t* hashLen = new size_t(0);
     sha256Timer.start();
-    std::vector<uint8_t> hash = SHA256::hash(data);
+    uint8_t* hash = SHA256::hash(data.data(), data.size(), hashLen);
     sha256Timer.stop();
 
-    size_t* outputLength = new size_t(0);
-
+    size_t* b64len = new size_t(0);
     base64Timer.start();
-    char* encoded = Base64::Encode(hash.data(), hash.size(), outputLength);
+    char* encoded = Base64::Encode(hash, *hashLen, b64len);
     base64Timer.stop();
-
-
-    std::cout << "SHA256 Hash: ";
-    for (size_t i = 0; i < hash.size(); i++){
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-    }
 
     std::cout << std::endl;
     std::cout << "Base64 Encoded: " << encoded << std::endl;
